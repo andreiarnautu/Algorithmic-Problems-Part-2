@@ -1,87 +1,95 @@
-/**
-  *  Worg
-  */
-#include <queue>
-#include <bitset>
-#include <cstdio>
- 
-FILE *fin = freopen("tsunami.in", "r", stdin); FILE *fout = freopen("tsunami.out", "w", stdout);
- 
-const int MAX_N = 1000 + 5;
-const int dx[] = {-1, 1, 0,  0};
-const int dy[] = { 0, 0, 1, -1};
- 
-int n, m, h;
-short int mat[MAX_N][MAX_N];
-std::bitset<MAX_N > affected[MAX_N];
- 
- 
- 
-void ReadInput() {
-  scanf("%d%d%d", &n, &m, &h);
- 
-  for(int i = 1; i <= n; i++) {
-    for(int j = 1; j <= m; j++) {
-      scanf("%d", &mat[i][j]);
-    }
-  }
-}
- 
-bool Valid(int x, int y) {
-  return 1 <= x && x <= n && 1 <= y && y <= m;
-}
- 
-int Solve() {
-  std::queue<std::pair<short int, short int > > q;
- 
-  for(int i = 1; i <= n; i++) {
-    for(int j = 1; j <= m; j++) {
-      if(mat[i][j] == 0 || mat[i][j] >= h) continue;
- 
-      bool ok = false;
-      for(int d = 0; d < 4; d++) {
-        int x = i + dx[d], y = j + dy[d];
- 
-        if(Valid(x, y) && mat[x][y] == 0) {
-          ok = true;
+/*
+    Eugen Nodea
+    Implementare - fill pe coada
+*/
+
+# include <cstdio>
+# include <queue>
+# define nmax 1002
+# define mmax 1002
+using namespace std;
+
+// evident ca se poate renunta la o matrice
+int n,m,h,A[nmax][mmax],i,j,M[nmax][mmax],ic,jc,sol,x,y,k;
+
+int dx[] = {0, 1, 0,-1};
+int dy[] = {1, 0,-1, 0};
+
+typedef pair<short int, short int> celula;
+queue <celula> q;
+
+//Verfific daca un patrat este adiacent cu o zona de apa
+inline int vecini(int i, int j)
+{
+    int k,x,y;
+    for (k=0; k<4; ++k)
+        {
+            x = i + dx[k];
+            y = j + dy[k];
+            if (A[x][y]==0) return 1;
         }
-      }
- 
-      if(ok) {
-        q.emplace(i, j);
-        affected[i][j] = true;
-      }
-    }
-  }
- 
-  while(!q.empty()) {
-    int x = q.front().first, y = q.front().second;
-    q.pop();
- 
-    for(int d = 0; d < 4; d++) {
-      int new_x = x + dx[d], new_y = y + dy[d];
- 
-      if(Valid(new_x, new_y) && !affected[new_x][new_y] && mat[new_x][new_y] < h & mat[new_x][new_y] != 0) {
-        affected[new_x][new_y] = true;
-        q.emplace(new_x, new_y);
-      }
-    }
-  }
- 
-  int ans = 0;
-  for(int i = 1; i <= n; i++) {
-    for(int j = 1; j <= m; j++) {
-      ans += affected[i][j];
-    }
-  }
- 
-  return ans;
+    return 0;
 }
- 
-int main() {
-  ReadInput();
- 
-  printf("%d\n", Solve());
- 
-  return 0;
+//construim coada cu patrate adiacente cu patrate indundate
+void add(int i, int j)
+{
+    int k,x,y;
+    for (k=0; k<4; ++k)
+        {
+            x = i + dx[k];
+            y = j + dy[k];
+            if (A[x][y] != A[i][j] && A[x][y] > 0 && A[x][y] < h && M[x][y] == 0)
+            {
+                q.push(make_pair(x, y));
+            }
+        }
+}
+
+void fill(int i, int j)
+{
+    int k,x,y;
+    M[i][j] = h - A[i][j];
+    ++sol;
+    add(i,j);
+    for (k=0; k<4; ++k)
+        {
+            x = i + dx[k];
+            y = j + dy[k];
+            if (A[i][j] == A[x][y] && M[x][y] == 0) fill(x,y);
+        }
+}
+
+int main(){
+
+    freopen("tsunami.in", "r", stdin);
+    freopen("tsunami.out", "w", stdout);
+    scanf("%d %d %d", &n, &m, &h);
+    for (i=1; i<=n; ++i)
+        for (j=1; j<=m; ++j)
+            scanf ("%d ",&A[i][j]);
+    //bordez matricea
+    for (i=0; i<=n+1; ++i)
+    {
+        A[i][0] = A[i][m+1] = -1;
+    }
+    for (i=0; i<=m+1; ++i)
+    {
+        A[0][i] = A[n+1][i] = -1;
+    }
+
+    for (i=1; i<=n; ++i)
+        for (j=1; j<=m; ++j)
+            if (A[i][j] < h && M[i][j] == 0 && A[i][j] > 0)
+                if (vecini(i,j)) fill(i,j);
+
+	while (!q.empty())
+	{
+		ic = q.front().first; jc = q.front().second;
+		if (M[ic][jc] == 0) fill(ic,jc);
+		q.pop();
+	}
+
+
+    printf("%d\n", sol);
+	return 0;
 }
