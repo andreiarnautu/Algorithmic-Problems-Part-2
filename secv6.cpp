@@ -1,42 +1,58 @@
 #include <cstdio>
 #include <stack>
-#include <algorithm>
-
-FILE *fin = freopen("secv6.in", "r", stdin); FILE *fout = freopen("secv6.out", "w", stdout);
-
-const int DIM = 8200;
-
+#define MaxN 16000013
 using namespace std;
 
-int n;
-int x[DIM];
-stack<int > stk;
+FILE *fin=freopen("secv6.in","r",stdin);
+FILE *fout=freopen("secv6.out","w",stdout);
 
-int main() {
-  scanf("%d", &n);
+stack <int> St;
+int n, m = 8192;
+int aux[8200], V[MaxN];
 
-  int m = min(8192, n);
-  for(int i = 0; i < m; i++) {
-    scanf("%d", &x[i]);
-  }
 
-  long long sol = 0;
-  for(int i = 0; i < n; i++) {
-    int a = i + x[i / 8192] + x[i % 8192];
+void Read()
+{
+    int i;
+    scanf("%d", &n);
+    if(n < m)
+        m = n;
+    for(i = 0; i < m ; ++i)
+        scanf("%d", &aux[i]);
 
-    //  Vrem sa scoatem elementele din stiva mai mici decat a
-    while(!stk.empty() && a >= stk.top()) {
-      stk.pop();
-      sol++;
+    for(i = 0; i < n ; ++i)
+        V[i] = i + (aux[i % 8192] ^ aux[i / 8192]);
+}
+
+void Solve()
+{
+    int i;
+    long long int cnt = 0;
+
+    for(i = 0; i < n ; ++i)
+    {
+        while( !St.empty() && V[St.top()] < V[i] )
+        {
+            ++cnt;
+            St.pop();
+        }
+
+        if( !St.empty() )
+        {
+            ++cnt;
+            if( V[St.top()] == V[i] )
+                St.pop();
+        }
+        St.push(i);
     }
 
-    if(!stk.empty()) {
-      sol++;
-    }
-    stk.push(a);
-  }
+    printf("%lld", cnt);
 
-  printf("%lld", sol);
+}
 
-  return 0;
+int main()
+{
+    Read();
+    Solve();
+    return 0;
 }

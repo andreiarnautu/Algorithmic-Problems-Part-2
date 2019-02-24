@@ -6,201 +6,193 @@
 #include <cstdlib>
 #include <algorithm>
 
-FILE *fin = freopen("secv8.in", "r", stdin); FILE *fout = freopen("secv8.out", "w", stdout);
-struct Treap {
-  Treap *left_son, *right_son;
-  long long key, priority;
-  int reversed, size;
+#define INF 2000000000
 
-  Treap(long long _key, long long _priority, int _reversed, int _size, Treap *_left_son, Treap *_right_son) :
-    key(_key), 
-    priority(_priority), 
-    reversed(_reversed), 
-    size(_size), 
-    left_son(_left_son), 
-    right_son(_right_son) {
+using namespace std;
+FILE *fin=freopen("secv8.in","r",stdin);
+FILE *fout=freopen("secv8.out","w",stdout);
 
+struct treap {
+
+            int key, priority, rev, cnt;
+            treap *left, *right;
+
+            treap(int key, int priority, int rev, int cnt, treap *left, treap *right) {
+
+                this->key = key, this->priority = priority, this->rev = rev, this->cnt = cnt;
+                this->left = left, this-> right = right;
+            }
+} *root, *empty;
+
+void spread(treap *&node) {
+
+    if(node->rev) {
+
+        swap(node->left, node->right);
+        node->rev ^= 1;
+        node->left->rev ^= 1;
+        node->right->rev ^= 1;
     }
-} *root, *empty_node;
-
-void Initialize() {
-  srand(time(NULL));
-
-  root = empty_node = new Treap {0, -1, 0, 0, NULL, NULL};
 }
 
-void Update(Treap* node) {
-  if(node == empty_node) return;
+void update(treap *&node) {
 
-  node->size = node->left_son->size + node->right_son->size + 1;
-
-  if(node->reversed) {
-    std::swap(node->left_son, node->right_son);
-    node->reversed ^= 1;
-    node->left_son->reversed ^= 1;
-    node->right_son->reversed ^= 1;
-  }
+    if(node != empty)
+        node->cnt = node->left->cnt + node->right->cnt + 1;
 }
 
-std::pair<Treap*, Treap* > Split(Treap* node, const int position) {
-  Update(node);
-  if(node == empty_node) {
-    return {empty_node, empty_node};
-  } else if(position <= node->left_son->size) {
-    auto split_left = Split(node->left_son, position);
+void rotLeft(treap *&node) {
 
-    auto answer = std::make_pair(split_left.first, node);
-    answer.second->left_son = split_left.second;
-    
-    Update(answer.second); 
-    return answer;
-  } else {
-    auto split_right = Split(node->right_son, position - node->left_son->size - 1);
+    spread(node->left);
 
-    auto answer = std::make_pair(node, split_right.second);
-    answer.first->right_son = split_right.first;
+    treap *t = node->left;
+    node->left = t->right, t->right = node;
+    node = t;
 
-    Update(answer.first);
-    return answer;
-  }
+    update(node->right); update(node);
 }
 
-Treap* Join(Treap *a, Treap *b) {
-  Update(a); Update(b);
-  if(a == empty_node) {
-    return b;
-  } else if(b == empty_node) {
-    return a;
-  } else if(a->priority > b->priority) {
-    Treap *answer = a;
+void rotRight(treap *&node) {
 
-    answer->right_son = Join(a->right_son, b);
+    spread(node->right);
 
-    Update(answer);
-    return answer;
-  } else {
-    Treap *answer = b;
+    treap *t = node->right;
+    node->right = t->left, t->left = node;
+    node = t;
 
-    answer->left_son = Join(a, b->left_son);
-
-    Update(answer);
-    return answer;
-  }
+    update(node->left); update(node);
 }
 
-Treap *Insert(Treap* node, Treap* node_to_insert, int position) {
-  Update(node);
-  
-  Treap *answer;
+void balance(treap *&node) {
 
-  if(node_to_insert->priority > node->priority) {
-    auto split_node = Split(node, position);
+    spread(node);
 
-    answer = node_to_insert; 
-    answer->left_son = split_node.first; answer->right_son = split_node.second;
-  } else if(position <= node->left_son->size) {
-    answer = node;
-    answer->left_son = Insert(node->left_son, node_to_insert, position);
-  } else {
-    answer = node;
-    answer->right_son = Insert(node->right_son, node_to_insert, position - node->left_son->size - 1);
-  }
-
-  Update(answer);
-  return answer;
+    if(node->left->priority > node->priority)
+        rotLeft(node);
+    else if(node->right->priority > node->priority)
+        rotRight(node);
 }
 
-Treap* NewNode(const int value) {
-  return new Treap {
-    value,
-    ((1LL * rand() << 45) + (1LL * rand() << 30) + (1LL * rand() << 15) + (1LL * rand())) & 0x7fffffffffffffff,
-    0,
-    1,
-    empty_node,
-    empty_node,
-  };
+int search(treap *node, int pos) {
+
+    spread(node);
+    if(node->left->cnt >= pos)
+        return search(node->left, pos);
+    if(node->left->cnt + 1 < pos)
+        return search(node->right, pos - node->left->cnt - 1);
+    return node->key;
 }
 
-Treap* Insert(Treap* root, int value, int position) {
-  return Insert(root, NewNode(value), position);
-}
+void insert(treap *&node, int key, int priority, int pos) {
 
-Treap* Delete(Treap* node, int left, int right) {
-  Update(node);
-  
-  auto first_split = Split(node, right); //  [1..right] + [right+1, n]
-  auto second_split = Split(first_split.first, left - 1);  //  [1..left-1] + [left, right]
+    if(node == empty) {
 
-  return Join(second_split.first, first_split.second);
-}
-
-Treap* Reverse(Treap *node, int left, int right) {
-  Update(node);
-
-  auto first_split = Split(node, right); //  [1..right] + [right+1, n]
-  auto second_split = Split(first_split.first, left - 1);  //  [1..left-1] + [left, right]
-
-  second_split.second->reversed ^= 1;
-  
-  Treap *answer = Join(Join(second_split.first, second_split.second), first_split.second);
-  Update(answer);
-  return answer;
-}
-
-int Access(Treap* node, int position) {
-  Update(node);
-
-  if(position <= node->left_son->size) {
-    return Access(node->left_son, position);
-  } else if(position == node->left_son->size + 1) {
-    return (int)node->key;
-  } else {
-    return Access(node->right_son, position - node->left_son->size - 1);
-  }
-}
-
-void Print(Treap *node) {
-  if(node == empty_node) return;
-  Update(node);
-
-  Print(node->left_son);
-  printf("%lld ", node->key);
-  Print(node->right_son);
-}
-
-void PrintTreap(Treap *node) {
-  Print(node);
-  printf("\n");
-}
-
-void ProcessOperations() {
-  int operation_count; scanf("%d", &operation_count);
-  int useless; scanf("%d ", &useless);
-
-  for(int i = 0; i < operation_count; i++) {
-    char c; scanf("%c", &c);
-
-    if(c == 'I') {
-      int position, value; scanf("%d%d ", &position, &value);
-      root = Insert(root, value, position - 1);
-    } else if(c == 'A') {
-      int position; scanf("%d ", &position);
-      printf("%d\n", Access(root, position));
-    } else if(c == 'R') {
-      int left, right; scanf("%d%d ", &left, &right);
-      root = Reverse(root, left, right);
-    } else {
-      int left, right; scanf("%d%d ", &left, &right);
-      root = Delete(root, left, right);
+        node = new treap(key, priority, 0, 1, empty, empty);
+        return;
     }
-  }
 
-  PrintTreap(root);
+    spread(node);
+    if(node->left->cnt + 1 >= pos)
+        insert(node->left, key, priority, pos);
+    else
+        insert(node->right, key, priority, pos - node->left->cnt - 1);
+
+    update(node);
+    balance(node);
+
+}
+
+void erase(treap *&node, int pos) {
+
+    if(node == empty)
+        return;
+    spread(node);
+
+    if(node->left->cnt >= pos)
+        erase(node->left, pos);
+    else if (node->left->cnt + 1 < pos)
+        erase(node->right, pos - node->left->cnt - 1);
+    else {
+
+        if(node->left == empty && node->right == empty) {
+                delete node, node = empty;
+        }
+        else {
+            (node->left->priority > node->right->priority) ? rotLeft(node) : rotRight(node);
+            erase(node, pos);
+        }
+    }
+    update(node);
+}
+
+void split(treap *&node, treap *&lTreap, treap *&rTreap, int pos) {
+
+    insert(node, 0, INF, pos);
+
+    lTreap = node->left;
+    rTreap = node->right;
+    delete node; node = empty;
+}
+
+void join(treap *&node, treap*&lTreap, treap*&rTreap) {
+
+    node = new treap(0, INF, 0, lTreap->cnt + rTreap->cnt + 1, lTreap, rTreap);
+    erase(node, lTreap->cnt + 1);
+}
+
+void write(treap *node) {
+
+    if(node == empty)
+        return;
+    spread(node);
+    write(node->left);
+    printf("%d ", node->key);
+    write(node->right);
+}
+
+void init() {
+
+    srand(unsigned(time(0)));
+    root = empty = new treap(0, 0, 0, 0, NULL, NULL);
+    empty->left = empty->right = empty;
 }
 
 int main() {
-  Initialize();
 
-  ProcessOperations();
-  return 0;
+    int n, what_is_this, a, b;
+    char c;
+
+    init();
+    for(scanf("%d %d ", &n, &what_is_this); n; --n) {
+
+        scanf("%c ", &c);
+        if(c == 'I') {
+            scanf("%d %d ", &a, &b);
+            insert(root, b, rand() % INF + 1, a);
+        }
+        if(c == 'A') {
+            scanf("%d ", &a);
+            printf("%d\n", search(root, a));
+        }
+        if(c == 'R') {
+            scanf("%d %d ", &a, &b);
+            treap *w, *x, *y, *z;
+
+            split(root, w, x, b + 1);
+            split(w, y, z, a);
+            z -> rev ^= 1;
+            join(w, y, z);
+            join(root, w, x);
+        }
+        if(c == 'D') {
+            scanf("%d %d ", &a, &b);
+            treap *w, *x, *y, *z;
+
+            split(root, w, x, b + 1);
+            split(w, y, z, a);
+            join(root, y, x);
+        }
+    }
+    write(root);
+    return 0;
 }
